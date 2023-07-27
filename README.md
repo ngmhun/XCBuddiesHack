@@ -1,6 +1,7 @@
 # XCBuddiesHack
 Xcontest Air Buddies - add any flight with a greasemonkey script
 * Install the Tampermonkey extension in Chromium (I did not try other browser and Greasemonkey yet)
+* Install the XCBuddiesHack.user.js 
 * Go to the [Daily score PG page](https://www.xcontest.org/world/en/flights/daily-score-pg/) on xcontest.org 
 * Or go to the [flight search page](https://www.xcontest.org/world/en/flights-search/) on xcontest.org 
 * You should see a new button in the top menu: **Select flights**

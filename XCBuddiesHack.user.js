@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         XCAddBuddies
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  Add more flights to the air buddies
 // @author       Gabor Nagy
 // @match        https://xcontest.org/*flights*
 // @match        https://www.xcontest.org/*flights*
+// @match        https://www.xcontest.org/*pilots/detail*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant        none
 // @run-at       document-idle
@@ -23,10 +24,10 @@
         btn.style.minWidth="20px";
         btn.style.borderRadius= "5px";
         btn.setAttribute("type","button");
-        btn.setAttribute("needsClear","true");
+        btn.setAttribute("tryCount","0");
         btn.setAttribute("id","hackButton");
         btn.setAttribute("class","button-bazaar");
-        if (window.location.href.includes("/detail:")){
+        if (window.location.href.includes("/flights/detail:")){
             if (!window.sessionStorage.getItem('view_id_list')){
                 return;
             }
@@ -36,69 +37,92 @@
         else{
             btn.setAttribute("onClick","document.hackFunctions.addCheckboxes();");
             btn.textContent="Select flights";
+            if (window.sessionStorage.getItem('view_id_list')){
+               //If the next page is requested so the #... part in the URL has been changed -> try to add the checkboxes again
+               addEventListener("hashchange", (event) => {setTimeout(function() {document.hackFunctions.addCheckboxes()},600)});
+            }
         }
         div.appendChild(btn);
         menu.appendChild(div);
+        if (!window.location.href.includes("/flights/detail:") && window.sessionStorage.getItem('view_id_list')){
+           setTimeout(function() {document.hackFunctions.addCheckboxes()},600);
+        }
     }
 })();
 var hackFunctions = document.hackFunctions = {};
 hackFunctions.addCheckboxes = function(){
-    var needsClear = document.getElementById("hackButton").getAttribute("needsClear");
-    if (needsClear == "true"){
-        window.sessionStorage.removeItem('view_id_list');
-        window.sessionStorage.removeItem('view_flight_list');
-        //Next page was requested so the #... part in the URL has been changed -> try to add the checkboxes again
-        addEventListener("hashchange", (event) => {setTimeout(function() {document.hackFunctions.addCheckboxes()},600)});
-        document.getElementById("hackButton").setAttribute("needsClear","false");
+    if (document.getElementById("selectFlightsTH")){
+        //Checkboxes already added
+        return;
     }
-    var idlist = window.sessionStorage.getItem('view_id_list');
+    var tryCount = document.getElementById("hackButton").getAttribute("tryCount");
     var ids=[];
+    var idlist = window.sessionStorage.getItem('view_id_list');
     if (idlist && idlist != null){
         ids=idlist.split(',');
+        hackFunctions.addClearButton();
     }
-    if (needsClear!="true" && document.getElementById("selectFlightsTH")){
-        //600 ms was too quick, try again a bit later:
-        setTimeout(function() {document.hackFunctions.addCheckboxes()},600)
-        ////600 ms was too quick, so re-enable the button and do nothing else (TODO: could be a bit more clever to try again with setTimeout
-        //document.getElementById("hackButton").disabled=false;
+
+    var tbs=document.querySelectorAll(".flights, .XCList tbody");
+    if (tbs.length==0){
+        if (parseInt(tryCount) < 4){ // TODO: is 4 iterations enough?
+            document.getElementById("hackButton").setAttribute("tryCount",""+parseInt(tryCount)+1);
+            //try again a bit later, maybe the flight list is not loaded yet:
+            setTimeout(function() {document.hackFunctions.addCheckboxes()},600)
+        }
         return;
     }
     else{
-        document.getElementById("hackButton").disabled=true;
+        document.getElementById("hackButton").style.display="inline";
     }
 
-    var ths=document.querySelectorAll(".flights, .XCList thead");
-    if (ths.length>0){
-        var cell1 = document.createElement("th");
-        cell1.setAttribute("id","selectFlightsTH");
-        cell1.innerHTML="Select flights";
-        ths[0].rows[0].appendChild(cell1);
-    }
-    var tbs=document.querySelectorAll(".flights, .XCList tbody");
+    var allChecked = true;
     if (tbs.length>0){
-        var trs=tbs[0].rows;
-        for (var idx = 0; idx<trs.length; idx++){
-            var tr=trs[idx];
-            if (tr.id){
-                var flightNo = ''+parseInt(tr.id.substring(7));
-                var cell2 = document.createElement("td");
-                tr.appendChild(cell2);
-                var checkbox = document.createElement("input");
-                checkbox.setAttribute("type","checkbox");
-                if (ids.indexOf(flightNo)>-1){
-                    checkbox.checked=true;
+        for (var tbidx=0; tbidx < tbs.length; tbidx++){
+            var foundRow = false;
+            var trs=tbs[tbidx].rows;
+            for (var idx = 0; idx<trs.length; idx++){
+                var tr=trs[idx];
+                if (tr.id){
+                    foundRow=true;
+                    var flightNo = ''+parseInt(tr.id.substring(7));
+                    var cell2 = document.createElement("td");
+                    tr.appendChild(cell2);
+                    var checkbox = document.createElement("input");
+                    checkbox.setAttribute("type","checkbox");
+                    checkbox.setAttribute("flightNo",flightNo);
+                    if (ids.indexOf(flightNo)>-1){
+                        checkbox.checked=true;
+                    }
+                    else{
+                        allChecked = false;
+                    }
+                    checkbox.setAttribute("onChange","document.hackFunctions.addFlight(this);");
+                    cell2.appendChild(checkbox);
+                    tr.appendChild(cell2);
                 }
-                checkbox.setAttribute("onChange","document.hackFunctions.addFlight(this,'"+flightNo+"');");
-                cell2.appendChild(checkbox);
-                tr.appendChild(cell2);
+            }
+            if (foundRow && tbs[tbidx].parentNode && tbs[tbidx].parentNode.tHead){
+                var cell1 = document.createElement("th");
+                cell1.setAttribute("id","selectFlightsTH");
+                cell1.innerHTML="Select flights";
+                var checkbox2 = document.createElement("input");
+                checkbox2.setAttribute("type","checkbox");
+                checkbox2.setAttribute("id","hackCheckAll");
+                checkbox2.checked=allChecked;
+                checkbox2.setAttribute("onChange","document.hackFunctions.checkAll(this);");
+                cell1.appendChild(checkbox2);
+                tbs[tbidx].parentNode.tHead.rows[0].appendChild(cell1);
             }
         }
+        document.getElementById("hackButton").style.display="none";
     }
     else{
-        document.getElementById("hackButton").disabled=false;
+        document.getElementById("hackButton").style.display="inline";
     }
 }
-hackFunctions.addFlight = function(checkbox, flightNo){
+hackFunctions.addFlight = function(checkbox){
+    var flightNo = checkbox.getAttribute("flightNo");
     var flightlist = window.sessionStorage.getItem('view_flight_list');
     var idlist = window.sessionStorage.getItem('view_id_list');
     var flights=[];
@@ -122,7 +146,11 @@ hackFunctions.addFlight = function(checkbox, flightNo){
     }
 	window.sessionStorage.setItem('view_id_list',ids.toString());
 	window.sessionStorage.setItem('view_flight_list',JSON.stringify(flights));
+    if (checkbox.checked && !document.getElementById("hackClearButton")){
+        hackFunctions.addClearButton();
+    }
 }
+
 hackFunctions.addFlights = function(){
     var flightlist = window.sessionStorage.getItem('view_flight_list');
     var idlist = window.sessionStorage.getItem('view_id_list');
@@ -135,28 +163,76 @@ hackFunctions.addFlights = function(){
         flights=JSON.parse(flightlist);
     }
 
-    var airb = document.querySelector(".XCslotJointFlights");
-    var div = document.createElement("div");
-    div.setAttribute("class","XCjointFlights");
-    var header = document.createElement("h3");
-    header.innerText="Selected flights:";
-    div.appendChild(header);
-    var table = document.createElement("table");
-    table.setAttribute("class","XCList");
-    for (var idx = 0; idx < ids.length; idx++){
-        var row = table.insertRow();
-        row.innerHTML = flights[idx];
-        row.cells[0].innerHTML=''+(idx+1);
-        row.cells[row.cells.length-1].removeChild(row.cells[row.cells.length-1].childNodes[0]);
-        var checkbox = document.createElement("input");
-        checkbox.setAttribute("type","checkbox");
-        checkbox.setAttribute("onChange","XContest.gadgets['joint_flights'].View.svelte_flightMulti_showHideFlight(this, '"+ids[idx]+"');");
-        row.cells[row.cells.length-1].appendChild(checkbox);
+    var table = document.getElementById("hackXCList");
+    if (!table || table==null){
+        var airb = document.querySelector(".XCslotJointFlights");
+        var div = document.createElement("div");
+        div.setAttribute("class","XCjointFlights");
+        var header = document.createElement("h3");
+        header.innerText="Selected flights:";
+        div.appendChild(header);
+        table = document.createElement("table");
+        div.appendChild(table);
+        airb.parentNode.insertBefore(div,airb);
+        table.setAttribute("id","hackXCList");
+        table.setAttribute("class","XCList");
     }
-    div.appendChild(table);
-    airb.parentNode.insertBefore(div,airb);
-
-    document.getElementById("hackButton").disabled=true;
-	//window.sessionStorage.removeItem('view_id_list');
-	//window.sessionStorage.removeItem('view_flight_list');
+    for (var idx = 0; idx < ids.length; idx++){
+        //Only add the element if not already there:
+        if (!document.getElementById("hackCheck"+ids[idx])){
+            var row = table.insertRow();
+            row.innerHTML = flights[idx];
+            row.cells[0].innerHTML=''+(idx+1);
+            row.cells[row.cells.length-1].removeChild(row.cells[row.cells.length-1].childNodes[0]);
+            var checkbox = document.createElement("input");
+            checkbox.setAttribute("type","checkbox");
+            checkbox.setAttribute("onChange","XContest.gadgets['joint_flights'].View.svelte_flightMulti_showHideFlight(this, '"+ids[idx]+"');");
+            checkbox.setAttribute("id","hackCheck"+ids[idx]);
+            row.cells[row.cells.length-1].appendChild(checkbox);
+        }
+    }
 }
+
+hackFunctions.checkAll = function(checkbox){
+    var allChecked = checkbox.checked;
+    var chks=document.querySelectorAll("input[type=checkbox]");
+    if (chks.length>0){
+        for (var chkidx=0; chkidx < chks.length; chkidx++){
+            if (chks[chkidx].getAttribute("flightNo")){
+                chks[chkidx].checked=allChecked;
+                hackFunctions.addFlight(chks[chkidx]);
+            }
+        }
+    }
+}
+
+hackFunctions.clearSelected = function(){
+    window.sessionStorage.removeItem('view_id_list');
+    window.sessionStorage.removeItem('view_flight_list');
+    var chks=document.querySelectorAll("input[type=checkbox]");
+    if (chks.length>0){
+        for (var chkidx=0; chkidx < chks.length; chkidx++){
+            if (chks[chkidx].getAttribute("flightNo") || chks[chkidx].getAttribute("id")=="hackCheckAll"){
+                chks[chkidx].checked=false;
+            }
+        }
+    }
+}
+
+hackFunctions.addClearButton = function(){
+    if (document.getElementById("hackClearButton")){
+        //Already added
+        return;
+    }
+    var btn = document.createElement("button");
+    btn.style.minWidth="20px";
+    btn.style.borderRadius= "5px";
+    btn.setAttribute("type","button");
+    btn.setAttribute("id","hackClearButton");
+    btn.setAttribute("class","button-bazaar");
+    btn.textContent="Clear selected";
+    btn.setAttribute("onClick","document.hackFunctions.clearSelected();");
+    var div =document.getElementById("hackButton").parentNode;
+    div.appendChild(btn);
+}
+

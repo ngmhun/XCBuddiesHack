@@ -1,14 +1,12 @@
 // ==UserScript==
 // @name         XCAddBuddies
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  Add more flights to the air buddies
 // @author       Gabor Nagy
-// @match        https://xcontest.org/*flights*
-// @match        https://www.xcontest.org/*flights*
-// @match        https://www.xcontest.org/*pilots/detail*
-// @match        https://www.xcontest.org/hungary/repulesek*
-// @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
+// @match        https://xcontest.org/*
+// @match        https://www.xcontest.org/*
+// @icon         data:image/gif;base64,R0lGODlhIAAgAMZZAABv/wBx/wB0/wB1/wB2/wF2/wB4/wB5/wl3/wB9/xt6/x97/x18/yl+/y+B/zeE/0GC/kKD/jOJ/0SF/jeN/02H/k+K/mCX/1qb/WKf/Zqampubm3Gm/6KioqOjo3+q/6ampqmpqYG0/7GxsZa9/7q6uru7u53B/729vai/+5zD+76+vqjD+6HF/6nD+6HG+sTExMXFxcbGxsfHx9LS0rzW/7rX/9XV1cHY/9bW1tfX19ra2src/9nc3N/f3+Dg4Nbo99fp9+bm5tzp/+rq6uLr/+nz9ur09vLy8uzz/+v19vPz8+z29u329u71/+339vb29vf39/T5//r6+vz8/Pz9//39/f3+//7+/v///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////yH5BAEKAH8ALAAAAAAgACAAAAf5gFmCg4SFhoeIiYqLjIRROzqRkkKNiVghMTmamjQaP5WHVh5UhjsyoIZWIKSFPjCohaqshK6whLKGtbaCuK2vu1m9tL+7Vh1ThjczwFlYJiMrKNIoJRtEzFlUS0jc3VDY4OHihz3l5ufo6ernSu3u7/Dx8vP08ExP+PlPTfX9SkcvLFQYSDBDEH/0jBwYwJBhAgkDXCCcZyRAwwEKeAxxkGKivIoNBZCocgJBR4/wKjK4UIDDlRoMT6J0ZwSACCktkhR5EHPmu4oLcGRxQqGhTJ8gG9j4cPHoTCMGGAogcJGFT3dHVEyIwJUrBAxArrq7py+f2LNo4wUCADs=
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
@@ -17,18 +15,27 @@
     //Add a new button somewhere:
     var menu = document.querySelector("#menu-top-buttons div");
     if (menu){
-        //Add a button to turn on the selection checkboxes
-        var div = document.createElement("div");
-        div.setAttribute("class","button corner");
-        div.setAttribute("id","button-bazaar");
-        var btn = document.createElement("button");
-        btn.style.minWidth="20px";
-        btn.style.borderRadius= "5px";
-        btn.setAttribute("type","button");
-        btn.setAttribute("tryCount","0");
-        btn.setAttribute("id","hackButton");
-        btn.setAttribute("class","button-bazaar");
-        var detail = (window.location.href.includes("/flights/detail:") || window.location.href.includes("/repulesek/reszletei:"));
+        var flights = false;
+        var detail = false; //(window.location.href.substring(6).includes(":"));
+        var flightsdiv =document.querySelector("div#flights");
+        var flightdiv =document.querySelector("div#flight");
+        if (flightsdiv){
+            flights=true;
+        }
+        if (flightdiv){
+            detail=true;
+        }
+        var btn;
+        if (flights || detail){
+            //Create a button to access the extra function:
+            btn = document.createElement("button");
+            btn.style.minWidth="20px";
+            btn.style.borderRadius= "5px";
+            btn.setAttribute("type","button");
+            btn.setAttribute("tryCount","0");
+            btn.setAttribute("id","hackButton");
+            btn.setAttribute("class","button-bazaar");
+        }
         if (detail){
             if (!window.sessionStorage.getItem('view_id_list')){
                 return;
@@ -36,7 +43,7 @@
             btn.setAttribute("onClick","document.hackFunctions.addFlights();");
             btn.textContent="Add flights";
         }
-        else{
+        else if (flights){
             btn.setAttribute("onClick","document.hackFunctions.addCheckboxes();");
             btn.textContent="Select flights";
             if (window.sessionStorage.getItem('view_id_list')){
@@ -44,9 +51,14 @@
                addEventListener("hashchange", (event) => {setTimeout(function() {document.hackFunctions.addCheckboxes()},600)});
             }
         }
-        div.appendChild(btn);
-        menu.appendChild(div);
-        if (!detail && window.sessionStorage.getItem('view_id_list')){
+        if (flights || detail){
+            var div = document.createElement("div");
+            div.setAttribute("class","button corner");
+            div.setAttribute("id","button-bazaar");
+            div.appendChild(btn);
+            menu.appendChild(div);
+        }
+        if (flights && window.sessionStorage.getItem('view_id_list')){
            setTimeout(function() {document.hackFunctions.addCheckboxes()},600);
         }
     }
@@ -237,3 +249,4 @@ hackFunctions.addClearButton = function(){
     var div =document.getElementById("hackButton").parentNode;
     div.appendChild(btn);
 }
+

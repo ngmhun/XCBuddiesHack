@@ -7,6 +7,7 @@
 // @match        https://xcontest.org/*flights*
 // @match        https://www.xcontest.org/*flights*
 // @match        https://www.xcontest.org/*pilots/detail*
+// @match        https://www.xcontest.org/hungary/repulesek*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant        none
 // @run-at       document-idle
@@ -27,7 +28,8 @@
         btn.setAttribute("tryCount","0");
         btn.setAttribute("id","hackButton");
         btn.setAttribute("class","button-bazaar");
-        if (window.location.href.includes("/flights/detail:")){
+        var detail = (window.location.href.includes("/flights/detail:") || window.location.href.includes("/repulesek/reszletei:"));
+        if (detail){
             if (!window.sessionStorage.getItem('view_id_list')){
                 return;
             }
@@ -44,7 +46,7 @@
         }
         div.appendChild(btn);
         menu.appendChild(div);
-        if (!window.location.href.includes("/flights/detail:") && window.sessionStorage.getItem('view_id_list')){
+        if (!detail && window.sessionStorage.getItem('view_id_list')){
            setTimeout(function() {document.hackFunctions.addCheckboxes()},600);
         }
     }
@@ -235,4 +237,3 @@ hackFunctions.addClearButton = function(){
     var div =document.getElementById("hackButton").parentNode;
     div.appendChild(btn);
 }
-

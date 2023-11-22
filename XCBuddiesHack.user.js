@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         XCAddBuddies
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.31
 // @description  Add more flights to the air buddies
 // @author       Gabor Nagy
 // @match        https://xcontest.org/*
@@ -18,8 +18,9 @@
         var flights = false;
         var detail = false; //(window.location.href.substring(6).includes(":"));
         var flightsdiv =document.querySelector("div#flights");
+	var flightsform =document.querySelector("form#filter-flights");
         var flightdiv =document.querySelector("div#flight");
-        if (flightsdiv){
+        if (flightsdiv || flightsform){
             flights=true;
         }
         if (flightdiv){
